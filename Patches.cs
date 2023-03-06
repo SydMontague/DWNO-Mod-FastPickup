@@ -19,6 +19,18 @@ namespace DWNOPlugin
             __instance.m_waitTime = 0f;
         }
 
+        [HarmonyPatch(typeof(uItemPickPanel), "Update")]
+        [HarmonyPrefix]
+        static void Update_Prefix(uItemPickPanel __instance)
+        {
+            // override state machine entry for MaterialPick, we don't have to wait for any emotion
+            if(__instance.m_callback == null && __instance.m_state == uItemPickPanel.State.MaterialPick)
+            {
+                __instance.m_itemPickCallback.Invoke();
+                SteamAchievement.Ref.SetAchievement(TrophyNo.AchiveName.FirstMaterialCollected);
+                __instance.ChangeState(uItemPickPanel.State.Result);
+            }
+        }
 
         [HarmonyPatch(typeof(uItemPickPanel), "Update")]
         [HarmonyPostfix]
@@ -26,11 +38,17 @@ namespace DWNOPlugin
         {
             // the wait timer can get set in this function, make sure it is reset on exit
             __instance.m_waitTime = 0f;
-            // only true on material pickup, makes pickup instant
-            if(__instance.m_targetPartnerCtrl != null)
-                __instance.m_targetPartnerCtrl.EmotionIdx = -1;
         }
 
+        [HarmonyPatch(typeof(PartnerCtrl), "StartItemPick")]
+        [HarmonyPrefix]
+        static bool StartItemPick()
+        {
+            // don't set the "start item pick" flag
+            return false;
+        }
+
+        
         [HarmonyPatch(typeof(PlayerCtrl), "StartFeelingAndChangeFace")]
         [HarmonyPrefix]
         static bool StartFeelingAndChangeFace_Prefix(PlayerCtrl __instance, PlayerCtrl.FeelAnimID _animId)
